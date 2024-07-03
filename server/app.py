@@ -2,7 +2,6 @@
 
 from flask import Flask, make_response, jsonify
 from flask_migrate import Migrate
-
 from models import db, Bakery, BakedGood
 
 app = Flask(__name__)
@@ -11,7 +10,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.json.compact = False
 
 migrate = Migrate(app, db)
-
 db.init_app(app)
 
 @app.route('/')
@@ -20,19 +18,61 @@ def index():
 
 @app.route('/bakeries')
 def bakeries():
-    return ''
+    bakeries = Bakery.query.all()
+    bakeries_list = []
+    for bakery in bakeries:
+        bakery_dict = {
+            "id": bakery.id,
+            "name": bakery.name,
+            "created_at": bakery.created_at,
+            "updated_at": bakery.updated_at,
+            "baked_goods": [{"id": bg.id, "name": bg.name, "price": bg.price, "created_at": bg.created_at, "updated_at": bg.updated_at} for bg in bakery.baked_goods]
+        }
+        bakeries_list.append(bakery_dict)
+    return jsonify(bakeries_list)
 
 @app.route('/bakeries/<int:id>')
 def bakery_by_id(id):
-    return ''
+    bakery = Bakery.query.get(id)
+    if bakery:
+        bakery_dict = {
+            "id": bakery.id,
+            "name": bakery.name,
+            "created_at": bakery.created_at,
+            "updated_at": bakery.updated_at,
+            "baked_goods": [{"id": bg.id, "name": bg.name, "price": bg.price, "created_at": bg.created_at, "updated_at": bg.updated_at} for bg in bakery.baked_goods]
+        }
+        return jsonify(bakery_dict)
+    else:
+        return make_response(jsonify({"error": "Bakery not found"}), 404)
 
 @app.route('/baked_goods/by_price')
 def baked_goods_by_price():
-    return ''
+    baked_goods = BakedGood.query.order_by(BakedGood.price.desc()).all()
+    baked_goods_list = [{"id": bg.id, "name": bg.name, "price": bg.price, "created_at": bg.created_at, "updated_at": bg.updated_at, "bakery_id": bg.bakery_id, "bakery": {"id": bg.bakery.id, "name": bg.bakery.name, "created_at": bg.bakery.created_at, "updated_at": bg.bakery.updated_at}} for bg in baked_goods]
+    return jsonify(baked_goods_list)
 
 @app.route('/baked_goods/most_expensive')
 def most_expensive_baked_good():
-    return ''
+    most_expensive = BakedGood.query.order_by(BakedGood.price.desc()).first()
+    if most_expensive:
+        most_expensive_dict = {
+            "id": most_expensive.id,
+            "name": most_expensive.name,
+            "price": most_expensive.price,
+            "created_at": most_expensive.created_at,
+            "updated_at": most_expensive.updated_at,
+            "bakery_id": most_expensive.bakery_id,
+            "bakery": {
+                "id": most_expensive.bakery.id,
+                "name": most_expensive.bakery.name,
+                "created_at": most_expensive.bakery.created_at,
+                "updated_at": most_expensive.bakery.updated_at
+            }
+        }
+        return jsonify(most_expensive_dict)
+    else:
+        return make_response(jsonify({"error": "No baked goods found"}), 404)
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
